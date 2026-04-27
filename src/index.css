@@ -3,16 +3,14 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --cream: #FAF8F3;
-  --sage: #7A8C76;
-  --sage-light: #EBF0EA;
-  --sage-dark: #4A5C47;
+  --cream: #FAF7F0;
+  --red: #C42020;
+  --red-light: #FBEBEB;
+  --red-dark: #9E1A1A;
   --charcoal: #2C2C2A;
-  --mid: #6B6B68;
-  --border: #E2DDD6;
+  --mid: #786860;
+  --border: #E6DAD0;
   --white: #FFFFFF;
-  --accent: #C4785A;
-  --accent-light: #F5EDE8;
   --font-display: 'DM Serif Display', Georgia, serif;
   --font-sans: 'DM Sans', system-ui, sans-serif;
   --radius: 12px;
@@ -48,7 +46,7 @@ header {
 .logo-mark {
   width: 42px;
   height: 42px;
-  background: var(--sage-dark);
+  background: var(--red);
   color: white;
   border-radius: 10px;
   display: flex;
@@ -143,7 +141,7 @@ textarea {
   transition: border-color 0.15s;
 }
 input:focus, textarea:focus {
-  border-color: var(--sage);
+  border-color: var(--red);
 }
 textarea { resize: vertical; }
 
@@ -168,8 +166,8 @@ textarea { resize: vertical; }
 .rate-row { display: flex; gap: 14px; }
 .rate-note {
   font-size: 13px;
-  color: var(--sage-dark);
-  background: var(--sage-light);
+  color: var(--red-dark);
+  background: var(--red-light);
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   margin-top: -4px;
@@ -180,7 +178,7 @@ textarea { resize: vertical; }
 /* ── BUTTONS ── */
 .btn-primary {
   width: 100%;
-  background: var(--sage-dark);
+  background: var(--red);
   color: white;
   border: none;
   border-radius: var(--radius);
@@ -192,7 +190,7 @@ textarea { resize: vertical; }
   transition: background 0.15s, transform 0.1s;
   margin-top: 8px;
 }
-.btn-primary:hover { background: var(--charcoal); }
+.btn-primary:hover { background: var(--red-dark); }
 .btn-primary:active { transform: scale(0.99); }
 .btn-primary:disabled { background: var(--border); color: var(--mid); cursor: not-allowed; }
 
@@ -207,7 +205,7 @@ textarea { resize: vertical; }
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
-.btn-ghost:hover { border-color: var(--sage); color: var(--charcoal); }
+.btn-ghost:hover { border-color: var(--red); color: var(--charcoal); }
 
 .btn-reset {
   width: 100%;
@@ -232,7 +230,7 @@ textarea { resize: vertical; }
 }
 
 .running-total {
-  background: var(--sage-dark);
+  background: var(--red);
   color: white;
   border-radius: var(--radius);
   padding: 12px 16px;
@@ -252,7 +250,7 @@ textarea { resize: vertical; }
   overflow: hidden;
   transition: border-color 0.15s;
 }
-.room-card.active { border-color: var(--sage); }
+.room-card.active { border-color: var(--red); }
 
 .room-header {
   display: flex;
@@ -274,7 +272,7 @@ textarea { resize: vertical; }
 .room-est {
   font-family: var(--font-display);
   font-size: 16px;
-  color: var(--sage-dark);
+  color: var(--red);
 }
 .room-chevron {
   font-size: 20px;
@@ -330,17 +328,17 @@ textarea { resize: vertical; }
   text-align: left;
   transition: all 0.12s;
 }
-.select-opt:hover { border-color: var(--sage); }
+.select-opt:hover { border-color: var(--red); }
 .select-opt.active {
-  background: var(--sage-light);
-  border-color: var(--sage);
-  color: var(--sage-dark);
+  background: var(--red-light);
+  border-color: var(--red);
+  color: var(--red-dark);
   font-weight: 500;
 }
 .opt-hrs {
   font-size: 11px;
   font-weight: 600;
-  color: var(--sage);
+  color: var(--red);
   background: var(--white);
   padding: 2px 7px;
   border-radius: 20px;
@@ -348,7 +346,7 @@ textarea { resize: vertical; }
   margin-left: 8px;
 }
 .select-opt.active .opt-hrs {
-  background: var(--sage-dark);
+  background: var(--red);
   color: white;
 }
 
@@ -364,7 +362,7 @@ textarea { resize: vertical; }
 .toggle-hrs {
   font-size: 11px;
   font-weight: 600;
-  color: var(--sage);
+  color: var(--red);
 }
 
 .toggle-btn {
@@ -378,7 +376,7 @@ textarea { resize: vertical; }
   transition: background 0.2s;
   flex-shrink: 0;
 }
-.toggle-btn.on { background: var(--sage-dark); }
+.toggle-btn.on { background: var(--red); }
 .toggle-knob {
   position: absolute;
   top: 3px;
@@ -418,7 +416,7 @@ textarea { resize: vertical; }
   line-height: 1;
   flex-shrink: 0;
 }
-.num-btn:hover { border-color: var(--sage); }
+.num-btn:hover { border-color: var(--red); }
 
 /* ── ROOM SUMMARY ── */
 .room-summary {
@@ -475,7 +473,7 @@ textarea { resize: vertical; }
 .sr-total { font-weight: 600; color: var(--charcoal); font-size: 15px; }
 
 .grand-total {
-  background: var(--sage-dark);
+  background: var(--red);
   color: white;
   border-radius: var(--radius);
   padding: 20px;
@@ -496,7 +494,7 @@ textarea { resize: vertical; }
   font-size: 22px;
   opacity: 1;
 }
-.gt-high { color: #A8D4A0; }
+.gt-high { color: #FFD0C8; }
 
 .fine-print {
   font-size: 11px;
@@ -510,3 +508,102 @@ textarea { resize: vertical; }
   gap: 10px;
 }
 .summary-actions .btn-primary { flex: 1; margin-top: 0; }
+
+/* ── ADJUST STEP ── */
+.adjust-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 24px;
+}
+
+.adjust-row {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.adjust-room-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--charcoal);
+  margin-bottom: 12px;
+}
+
+.room-icon-sm { font-size: 16px; }
+
+.adjust-fields {
+  display: flex;
+  gap: 12px;
+}
+
+.adjust-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.adjust-field label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--mid);
+}
+
+.adj-input-wrap {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.adj-input-wrap input {
+  width: 100%;
+  padding-right: 32px;
+}
+
+.adj-input-wrap.edited input {
+  border-color: var(--red);
+  background: var(--red-light);
+  color: var(--red-dark);
+  font-weight: 600;
+}
+
+.reset-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--red);
+  font-size: 14px;
+  padding: 0;
+  line-height: 1;
+}
+.reset-btn:hover { opacity: 0.7; }
+
+.calc-was {
+  font-size: 10px;
+  color: var(--mid);
+  margin-top: 2px;
+}
+
+/* ── EDITED BADGE ── */
+.edited-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--red-light);
+  color: var(--red);
+  padding: 2px 7px;
+  border-radius: 20px;
+  margin-left: 6px;
+  text-transform: lowercase;
+  letter-spacing: 0;
+}
+
+.field-note { color: var(--red); }
