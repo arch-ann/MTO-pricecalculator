@@ -2,11 +2,68 @@ import { useState } from "react";
 import { jsPDF } from "jspdf";
 
 // ─── MASTER DEFAULTS ──────────────────────────────────────────────────────────
-const DEFAULTS = {
+// Internal rate engine — not exposed to client
+const INTERNAL_RATE = {
   hoursPerDay: 18,
-  pricePerDay: 1500,
+  pricePerDay: 2000,   // updated day rate
   highEndBuffer: 0.2,
 };
+
+// ─── TIER CONFIG ──────────────────────────────────────────────────────────────
+const TIERS = {
+  signature: {
+    id: "signature",
+    label: "Signature",
+    sublabel: "Full Home",
+    scope: "Whole-home system",
+    badge: "#A32D2D",
+    badgeBg: "#FCEBEB",
+    minRooms: 5,        // 5+ rooms → Signature
+    sqftRateLow: 4.50,
+    sqftRateHigh: 6.50,
+    projectLow: 9000,
+    projectHigh: 26000,
+  },
+  select: {
+    id: "select",
+    label: "Select",
+    sublabel: "Partial Home",
+    scope: "3–6 targeted spaces",
+    badge: "#5F5E5A",
+    badgeBg: "#F1EFE8",
+    minRooms: 3,        // 3–4 rooms → Select
+    sqftRateLow: 3.25,
+    sqftRateHigh: 4.00,
+    projectLow: 4500,
+    projectHigh: 10000,
+  },
+  refresh: {
+    id: "refresh",
+    label: "Refresh",
+    sublabel: "Single Zone",
+    scope: "1–2 spaces",
+    badge: "#3B6D11",
+    badgeBg: "#EAF3DE",
+    minRooms: 1,        // 1–2 rooms → Refresh
+    sqftRateLow: 2.70,
+    sqftRateHigh: 3.25,
+    projectLow: 1500,
+    projectHigh: 4500,
+  },
+};
+
+function detectTier(roomCount) {
+  if (roomCount >= TIERS.signature.minRooms) return TIERS.signature;
+  if (roomCount >= TIERS.select.minRooms) return TIERS.select;
+  return TIERS.refresh;
+}
+
+// Apply tier pricing floor: if hours-engine total is below tier floor, bump to floor
+function applyTierFloor(calculatedLow, tier) {
+  return Math.max(calculatedLow, tier.projectLow);
+}
+
+const DEFAULTS = { ...INTERNAL_RATE };
 
 // ─── ROOM CONFIGS ─────────────────────────────────────────────────────────────
 const ROOMS = [
@@ -178,11 +235,10 @@ const BRAND = {
 };
 
 // ─── PDF GENERATION ───────────────────────────────────────────────────────────
-function generatePDF(clientInfo, masterVars, activeRooms, adjData, totals) {
+function generatePDF(clientInfo, masterVars, activeRooms, adjData, totals, tier) {
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   const PW = 612, ML = 48, MR = 48, CW = PW - ML - MR;
   const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-  const hourlyRate = masterVars.pricePerDay / masterVars.hoursPerDay;
   let y = 0;
 
   const sf = (a) => doc.setFillColor(...a);
@@ -191,13 +247,30 @@ function generatePDF(clientInfo, masterVars, activeRooms, adjData, totals) {
   const tx = (s, x, ty, o = {}) => doc.text(s, x, ty, o);
   const chk = (n = 60) => { if (y + n > 750) { doc.addPage(); y = 48; } };
 
+  // Parse tier badge color for PDF
+  function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    return [r,g,b];
+  }
+  function hexToRgbLight(hex) {
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    // blend toward white
+    return [Math.round(r*0.15+240), Math.round(g*0.15+240), Math.round(b*0.15+240)];
+  }
+  const tierColor = hexToRgb(tier.badge);
+  const tierColorLight = hexToRgbLight(tier.badge);
+
   // Header
   sf(BRAND.cream); doc.rect(0, 0, PW, 88, "F");
   sf(BRAND.red); doc.roundedRect(ML, 20, 48, 48, 6, 6, "F");
   st(BRAND.white); doc.setFont("helvetica", "bold"); doc.setFontSize(11);
   tx("MTO", ML + 24, 49, { align: "center" });
   st(BRAND.charcoal); doc.setFont("helvetica", "bold"); doc.setFontSize(22);
-  tx("Project Estimate", ML + 62, 41);
+  tx("Project Proposal", ML + 62, 41);
   st(BRAND.mid); doc.setFont("helvetica", "normal"); doc.setFontSize(10);
   tx("Minimize then Organize", ML + 62, 57);
   st(BRAND.mid); doc.setFontSize(9);
@@ -225,70 +298,90 @@ function generatePDF(clientInfo, masterVars, activeRooms, adjData, totals) {
     y += bh + 18;
   }
 
-  // Table header
-  st(BRAND.mid); doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
-  tx("SPACES & ESTIMATES", ML, y); y += 10;
-  sf(BRAND.charcoal); doc.rect(ML, y, CW, 22, "F");
+  // Tier badge block
+  chk(64);
+  sf(tierColorLight); sd(tierColor);
+  doc.setLineWidth(1.5);
+  doc.roundedRect(ML, y, CW, 56, 6, 6, "FD");
+  // Badge pill
+  sf(tierColor);
+  doc.roundedRect(ML + 14, y + 14, 64, 16, 8, 8, "F");
   st(BRAND.white); doc.setFont("helvetica", "bold"); doc.setFontSize(8);
-  tx("Space", ML + 10, y + 14);
-  tx("Hours", ML + CW * 0.50, y + 14, { align: "right" });
-  tx("Labor", ML + CW * 0.66, y + 14, { align: "right" });
-  tx("Products", ML + CW * 0.82, y + 14, { align: "right" });
-  tx("Total", ML + CW, y + 14, { align: "right" });
-  y += 22;
+  tx(tier.label.toUpperCase(), ML + 46, y + 25, { align: "center" });
+  // Tier name + scope
+  st(BRAND.charcoal); doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+  tx(`${tier.label} — ${tier.sublabel}`, ML + 90, y + 26);
+  st(BRAND.mid); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+  tx(tier.scope, ML + 90, y + 41);
+  y += 72;
+
+  // Brand statement
+  chk(36);
+  st(BRAND.mid); doc.setFont("helvetica", "italic"); doc.setFontSize(10);
+  tx("We build the system your home runs on.", ML, y); y += 22;
+  sd(BRAND.border); doc.setLineWidth(0.5); doc.line(ML, y, ML + CW, y); y += 16;
+
+  // Spaces included
+  st(BRAND.mid); doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+  tx("SPACES INCLUDED", ML, y); y += 12;
 
   let alt = false;
   for (const room of activeRooms) {
     const d = adjData[room.id] || {};
     const hours = d.hours !== undefined ? d.hours : calcRoomHours(room, d.values || {});
     if (hours === 0 && d.overrideTotal === undefined) continue;
-    chk(26);
-    const labor = hours * hourlyRate;
-    const product = labor * room.productMultiplier;
-    const roomTotal = d.overrideTotal !== undefined ? d.overrideTotal : labor + product;
+    chk(24);
     sf(alt ? BRAND.redLight : BRAND.white); sd(BRAND.border);
-    doc.rect(ML, y, CW, 24, "F");
-    st(BRAND.charcoal); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-    tx(room.label, ML + 10, y + 15);
-    doc.setFont("helvetica", "normal"); st(BRAND.mid); doc.setFontSize(8.5);
-    tx(`${hours} hrs`, ML + CW * 0.50, y + 15, { align: "right" });
-    st(BRAND.charcoal);
-    tx(fmt(labor), ML + CW * 0.66, y + 15, { align: "right" });
-    tx(fmt(product), ML + CW * 0.82, y + 15, { align: "right" });
-    doc.setFont("helvetica", "bold");
-    tx(fmt(roomTotal), ML + CW, y + 15, { align: "right" });
-    y += 24; alt = !alt;
+    doc.rect(ML, y, CW, 22, "F");
+    st(BRAND.charcoal); doc.setFont("helvetica", "normal"); doc.setFontSize(9.5);
+    tx(room.label, ML + 10, y + 14);
+    // Complexity indicator (hours bucket)
+    const complexity = hours <= 9 ? "Standard" : hours <= 18 ? "Elevated" : "Complex";
+    st(BRAND.mid); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+    tx(complexity, ML + CW - 10, y + 14, { align: "right" });
+    y += 22; alt = !alt;
   }
+  y += 12;
 
-  // Totals
-  chk(90); y += 12;
-  sf(BRAND.red); doc.roundedRect(ML, y, CW, 76, 6, 6, "F");
+  // Investment range (the headline — no raw hours shown)
+  chk(90);
+  sf(BRAND.red); doc.roundedRect(ML, y, CW, 80, 6, 6, "F");
   st(BRAND.redMuted); doc.setFont("helvetica", "bold"); doc.setFontSize(8);
-  tx("LOW ESTIMATE", ML + 16, y + 18);
-  st(BRAND.white); doc.setFont("helvetica", "bold"); doc.setFontSize(26);
-  tx(fmt(totals.low), ML + 16, y + 50);
+  tx("PROJECT INVESTMENT", ML + 16, y + 18);
+  st(BRAND.white); doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+  tx("Starting from", ML + 16, y + 38);
+  st(BRAND.white); doc.setFont("helvetica", "bold"); doc.setFontSize(28);
+  tx(fmt(totals.low), ML + 16, y + 64);
   st(BRAND.redMuted); doc.setFont("helvetica", "bold"); doc.setFontSize(8);
-  tx("HIGH ESTIMATE", ML + CW * 0.52, y + 18);
-  st([255, 210, 200]); doc.setFont("helvetica", "bold"); doc.setFontSize(26);
-  tx(fmt(totals.high), ML + CW * 0.52, y + 50);
+  tx("ESTIMATED RANGE", ML + CW * 0.52, y + 18);
+  st([255, 210, 200]); doc.setFont("helvetica", "bold"); doc.setFontSize(18);
+  tx(`${fmt(totals.low)} – ${fmt(totals.high)}`, ML + CW * 0.52, y + 48);
   st(BRAND.redMuted); doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
-  tx(`+${Math.round(masterVars.highEndBuffer * 100)}% scope buffer`, ML + CW * 0.52, y + 64);
-  y += 92;
+  tx("Final scope confirmed at walkthrough", ML + CW * 0.52, y + 64);
+  y += 96;
 
-  st(BRAND.mid); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-  tx(`Based on ${masterVars.hoursPerDay} hrs/day at ${fmt(masterVars.pricePerDay)}/day (${fmt(hourlyRate)}/hr)`, ML, y);
-  y += 20;
-
-  // Disclaimer
-  chk(52);
-  sf(BRAND.cream); sd(BRAND.border);
-  doc.roundedRect(ML, y, CW, 42, 4, 4, "FD");
-  st(BRAND.mid); doc.setFont("helvetica", "italic"); doc.setFontSize(8);
-  const disc = doc.splitTextToSize(
-    "This estimate does not include the cost of new shelving systems, closet installations, or furniture (minimum $1,500 where noted). Final pricing may vary based on on-site conditions.",
+  // What's included note
+  chk(72);
+  sf(BRAND.cream); sd(BRAND.border); doc.setLineWidth(0.5);
+  doc.roundedRect(ML, y, CW, 60, 4, 4, "FD");
+  st(BRAND.charcoal); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+  tx("What's included", ML + 12, y + 16);
+  st(BRAND.mid); doc.setFont("helvetica", "normal"); doc.setFontSize(8.5);
+  const included = doc.splitTextToSize(
+    "Full project planning and walkthrough · All organizing labor · Sourcing recommendations · Installation of organizing systems · Final product placement and styling",
     CW - 24
   );
-  doc.text(disc, ML + 12, y + 14);
+  doc.text(included, ML + 12, y + 30);
+  y += 76;
+
+  // Disclaimer
+  chk(44);
+  st(BRAND.mid); doc.setFont("helvetica", "italic"); doc.setFontSize(7.5);
+  const disc = doc.splitTextToSize(
+    "Investment does not include cost of new shelving systems, closet installations, or furniture (minimum $1,500 where applicable). Final investment confirmed after walkthrough and scope review.",
+    CW
+  );
+  doc.text(disc, ML, y);
 
   // Footer
   sd(BRAND.border); doc.setLineWidth(0.5); doc.line(ML, 770, PW - MR, 770);
@@ -297,7 +390,7 @@ function generatePDF(clientInfo, masterVars, activeRooms, adjData, totals) {
   tx("minimizethenorganize.com", PW - MR, 784, { align: "right" });
 
   const safeName = (clientInfo.name || "estimate").replace(/\s+/g, "_");
-  doc.save(`MTO_Estimate_${safeName}_${date.replace(/,?\s+/g, "_")}.pdf`);
+  doc.save(`MTO_Proposal_${safeName}_${date.replace(/,?\s+/g, "_")}.pdf`);
 }
 
 // ─── FIELD COMPONENT ──────────────────────────────────────────────────────────
@@ -452,6 +545,7 @@ export default function App() {
   const [activeRooms, setActiveRooms] = useState([]);
   const [roomValues, setRoomValues] = useState({});
   const [adjustments, setAdjustments] = useState({});
+  const [tierOverride, setTierOverride] = useState(null); // Cabri can manually override detected tier
 
   const hourlyRate = masterVars.pricePerDay / masterVars.hoursPerDay;
   const activeRoomObjects = ROOMS.filter((r) => activeRooms.includes(r.id));
@@ -469,6 +563,15 @@ export default function App() {
     totalLow += roomTotal;
   }
   const totalHigh = totalLow * (1 + masterVars.highEndBuffer);
+
+  // Tier detection + floor pricing
+  const detectedTier = detectTier(activeRoomObjects.length);
+  const activeTier = tierOverride ? TIERS[tierOverride] : detectedTier;
+  const tierFlooredLow = applyTierFloor(totalLow, activeTier);
+  const tierFlooredHigh = Math.max(totalHigh, activeTier.projectLow * (1 + masterVars.highEndBuffer));
+  // Final display totals use the floored values
+  const displayLow = tierFlooredLow;
+  const displayHigh = Math.max(tierFlooredHigh, tierFlooredLow * (1 + masterVars.highEndBuffer));
 
   function toggleRoom(id) {
     setActiveRooms((p) => p.includes(id) ? p.filter((r) => r !== id) : [...p, id]);
@@ -530,20 +633,6 @@ export default function App() {
             <textarea placeholder="Anything to note before the estimate..." value={clientInfo.notes}
               onChange={(e) => setClientInfo({ ...clientInfo, notes: e.target.value })} rows={3} />
           </div>
-          <div className="divider-label">Rate settings</div>
-          <div className="rate-row">
-            <div className="form-group half">
-              <label>Hours per day</label>
-              <input type="number" value={masterVars.hoursPerDay}
-                onChange={(e) => setMasterVars({ ...masterVars, hoursPerDay: parseFloat(e.target.value) || 18 })} />
-            </div>
-            <div className="form-group half">
-              <label>Price per day ($)</label>
-              <input type="number" value={masterVars.pricePerDay}
-                onChange={(e) => setMasterVars({ ...masterVars, pricePerDay: parseFloat(e.target.value) || 1500 })} />
-            </div>
-          </div>
-          <div className="rate-note">Effective hourly rate: {fmt(hourlyRate)}/hr</div>
           <button className="btn-primary" onClick={() => setStep("rooms")}>Start estimating →</button>
         </div>
       )}
@@ -559,8 +648,8 @@ export default function App() {
             {totalLow > 0 && (
               <div className="running-total">
                 <div className="rt-label">Running total</div>
-                <div className="rt-value">{fmt(totalLow)}</div>
-                <div className="rt-range">– {fmt(totalHigh)}</div>
+                <div className="rt-value">{fmt(displayLow)}</div>
+                <div className="rt-range">– {fmt(displayHigh)}</div>
               </div>
             )}
           </div>
@@ -588,6 +677,33 @@ export default function App() {
           <p className="panel-sub">
             Override hours or totals for any special cases. Hit ↺ to reset back to the calculated value.
           </p>
+
+          {/* Tier indicator + override */}
+          <div style={{ background: activeTier.badgeBg, border: `1.5px solid ${activeTier.badge}`, borderRadius: 10, padding: "12px 14px", marginBottom: "1.25rem" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.7px", color: activeTier.badge, marginBottom: 3 }}>
+                  {detectedTier.id === activeTier.id ? "Auto-detected tier" : "Tier override active"}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "#2a2a28" }}>
+                  {activeTier.label} — {activeTier.sublabel}
+                </div>
+                <div style={{ fontSize: 12, color: "#888780", marginTop: 2 }}>
+                  Floor: {fmt(activeTier.projectLow)} · Range: {fmt(activeTier.projectLow)}–{fmt(activeTier.projectHigh)}
+                </div>
+              </div>
+              <select
+                style={{ fontSize: 12, padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, background: "#fff", color: "#2a2a28", cursor: "pointer" }}
+                value={tierOverride || detectedTier.id}
+                onChange={(e) => setTierOverride(e.target.value === detectedTier.id && !tierOverride ? null : e.target.value)}
+              >
+                {Object.values(TIERS).map(t => (
+                  <option key={t.id} value={t.id}>{t.label} — {t.sublabel}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div className="adjust-list">
             {activeRoomObjects.map((room) => {
               const calcHrs = calcRoomHours(room, roomValues[room.id] || {});
@@ -602,11 +718,11 @@ export default function App() {
             })}
           </div>
           <div className="grand-total">
-            <div className="gt-row"><span>Total hours</span><span>{totalHours} hrs</span></div>
-            <div className="gt-row"><span>Low estimate</span><span className="gt-low">{fmt(totalLow)}</span></div>
+            <div className="gt-row"><span>Total hours (internal)</span><span>{totalHours} hrs</span></div>
+            <div className="gt-row"><span>Project low</span><span className="gt-low">{fmt(displayLow)}</span></div>
             <div className="gt-row">
-              <span>High estimate <em>(+{Math.round(masterVars.highEndBuffer * 100)}%)</em></span>
-              <span className="gt-high">{fmt(totalHigh)}</span>
+              <span>Project high <em>(+{Math.round(masterVars.highEndBuffer * 100)}%)</em></span>
+              <span className="gt-high">{fmt(displayHigh)}</span>
             </div>
           </div>
           <div className="step-nav">
@@ -623,16 +739,23 @@ export default function App() {
           {clientInfo.name && (
             <p className="panel-sub">For {clientInfo.name}{clientInfo.address ? ` · ${clientInfo.address}` : ""}</p>
           )}
+
+          {/* Tier badge */}
+          <div style={{ background: activeTier.badgeBg, border: `1.5px solid ${activeTier.badge}`, borderRadius: 10, padding: "12px 16px", marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ background: activeTier.badge, color: "#fff", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", padding: "4px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>
+              {activeTier.label}
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#2a2a28" }}>{activeTier.sublabel} — {activeTier.scope}</div>
+              <div style={{ fontSize: 11, color: "#888780", marginTop: 1 }}>Project investment range: {fmt(displayLow)} – {fmt(displayHigh)}</div>
+            </div>
+          </div>
+
           <div className="summary-table">
             {activeRoomObjects.map((room) => {
               const adj = adjustments[room.id] || {};
               const calcHrs = calcRoomHours(room, roomValues[room.id] || {});
               if (calcHrs === 0) return null;
-              const hrs = adj.hours !== undefined ? parseFloat(adj.hours) || 0 : calcHrs;
-              const labor = hrs * hourlyRate;
-              const product = labor * room.productMultiplier;
-              const total = adj.overrideTotal !== undefined
-                ? parseFloat(adj.overrideTotal) || 0 : labor + product;
               const wasEdited = adj.hours !== undefined || adj.overrideTotal !== undefined;
               return (
                 <div key={room.id} className="summary-room">
@@ -641,35 +764,34 @@ export default function App() {
                     {wasEdited && <span className="edited-badge">adjusted</span>}
                   </div>
                   <div className="sr-details">
-                    <span>{hrs} hrs</span>
-                    <span className="sr-total">{fmt(total)}</span>
+                    <span style={{ fontSize: 11, color: "#888780" }}>included</span>
                   </div>
                 </div>
               );
             })}
           </div>
           <div className="grand-total">
-            <div className="gt-row"><span>Total hours</span><span>{totalHours} hrs</span></div>
-            <div className="gt-row"><span>Low estimate</span><span className="gt-low">{fmt(totalLow)}</span></div>
+            <div className="gt-row"><span>Project investment</span><span className="gt-low">{fmt(displayLow)}</span></div>
             <div className="gt-row">
-              <span>High estimate <em>(+{Math.round(masterVars.highEndBuffer * 100)}%)</em></span>
-              <span className="gt-high">{fmt(totalHigh)}</span>
+              <span>Estimated range</span>
+              <span className="gt-high">{fmt(displayLow)} – {fmt(displayHigh)}</span>
             </div>
           </div>
           <div className="fine-print">
-            Estimate does not include cost of new shelving systems, closet installations, or furniture.
+            Final investment confirmed after walkthrough. Does not include cost of new shelving systems, closet installations, or furniture.
           </div>
           <div className="summary-actions">
             <button className="btn-ghost" onClick={() => setStep("adjust")}>← Adjust</button>
             <button className="btn-primary" onClick={() =>
-              generatePDF(clientInfo, masterVars, activeRoomObjects, buildAdjForPDF(), { low: totalLow, high: totalHigh })
-            }>Download PDF ↓</button>
+              generatePDF(clientInfo, masterVars, activeRoomObjects, buildAdjForPDF(), { low: displayLow, high: displayHigh }, activeTier)
+            }>Download proposal ↓</button>
           </div>
           <button className="btn-reset" onClick={() => {
             setStep("client");
             setClientInfo({ name: "", address: "", notes: "" });
             setActiveRooms([]); setRoomValues({});
             setAdjustments({}); setMasterVars({ ...DEFAULTS });
+            setTierOverride(null);
           }}>Start new estimate</button>
         </div>
       )}
