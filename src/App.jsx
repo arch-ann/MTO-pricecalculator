@@ -494,11 +494,11 @@ function RoomCard({ room, isActive, values, onToggle, onFieldChange, hourlyRate 
 
 // ─── ADJUST ROW ───────────────────────────────────────────────────────────────
 function AdjustRow({ room, calcHours, hourlyRate, overrideHours, overrideTotal, onHoursChange, onTotalChange }) {
-  const hrs = overrideHours !== undefined ? parseFloat(overrideHours) || 0 : calcHours;
+  const hrs = overrideHours !== undefined && overrideHours !== "" ? parseFloat(overrideHours) || 0 : calcHours;
   const labor = hrs * hourlyRate;
   const calcTotal = labor + labor * room.productMultiplier;
-  const hoursEdited = overrideHours !== undefined;
-  const totalEdited = overrideTotal !== undefined;
+  const hoursEdited = overrideHours !== undefined && parseFloat(overrideHours) !== calcHours;
+  const totalEdited = overrideTotal !== undefined && parseFloat(overrideTotal) !== Math.round(calcTotal);
 
   return (
     <div className="adjust-row">
@@ -512,7 +512,11 @@ function AdjustRow({ room, calcHours, hourlyRate, overrideHours, overrideTotal, 
           <div className={`adj-input-wrap ${hoursEdited ? "edited" : ""}`}>
             <input type="number" min="0"
               value={overrideHours !== undefined ? overrideHours : calcHours}
-              onChange={(e) => onHoursChange(e.target.value === String(calcHours) ? undefined : e.target.value)} />
+              onChange={(e) => onHoursChange(e.target.value)}
+              onBlur={(e) => {
+                const v = parseFloat(e.target.value);
+                if (isNaN(v) || v === calcHours) onHoursChange(undefined);
+              }} />
             {hoursEdited && (
               <button className="reset-btn" onClick={() => onHoursChange(undefined)} title="Reset">↺</button>
             )}
@@ -524,9 +528,10 @@ function AdjustRow({ room, calcHours, hourlyRate, overrideHours, overrideTotal, 
           <div className={`adj-input-wrap ${totalEdited ? "edited" : ""}`}>
             <input type="number" min="0"
               value={overrideTotal !== undefined ? overrideTotal : Math.round(calcTotal)}
-              onChange={(e) => {
-                const calc = Math.round(calcTotal);
-                onTotalChange(parseInt(e.target.value) === calc ? undefined : e.target.value);
+              onChange={(e) => onTotalChange(e.target.value)}
+              onBlur={(e) => {
+                const v = parseInt(e.target.value);
+                if (isNaN(v) || v === Math.round(calcTotal)) onTotalChange(undefined);
               }} />
             {totalEdited && (
               <button className="reset-btn" onClick={() => onTotalChange(undefined)} title="Reset">↺</button>
