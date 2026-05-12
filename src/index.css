@@ -1,18 +1,20 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --cream: #FAF7F0;
-  --red: #C42020;
-  --red-light: #FBEBEB;
-  --red-dark: #9E1A1A;
+  --cream: #FDF3E9;
+  --red: #EE3424;
+  --red-light: #C5D9F0;
+  --red-dark: #C0271A;
+  --blue: #C5D9F0;
+  --blue-dark: #7AAAD4;
   --charcoal: #2C2C2A;
   --mid: #786860;
   --border: #E6DAD0;
   --white: #FFFFFF;
-  --font-display: 'DM Serif Display', Georgia, serif;
-  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-display: 'Libre Caslon Text', Georgia, serif;
+  --font-sans: 'IBM Plex Mono', 'Courier New', monospace;
   --radius: 12px;
   --radius-sm: 8px;
 }
@@ -22,6 +24,8 @@ html, body, #root {
   background: var(--cream);
   font-family: var(--font-sans);
   color: var(--charcoal);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
 }
 
 .app {
@@ -166,8 +170,8 @@ textarea { resize: vertical; }
 .rate-row { display: flex; gap: 14px; }
 .rate-note {
   font-size: 13px;
-  color: var(--red-dark);
-  background: var(--red-light);
+  color: #1a3a5c;
+  background: var(--blue);
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   margin-top: -4px;
@@ -330,9 +334,9 @@ textarea { resize: vertical; }
 }
 .select-opt:hover { border-color: var(--red); }
 .select-opt.active {
-  background: var(--red-light);
-  border-color: var(--red);
-  color: var(--red-dark);
+  background: var(--blue);
+  border-color: var(--blue-dark);
+  color: #1a3a5c;
   font-weight: 500;
 }
 .opt-hrs {
@@ -346,7 +350,7 @@ textarea { resize: vertical; }
   margin-left: 8px;
 }
 .select-opt.active .opt-hrs {
-  background: var(--red);
+  background: var(--blue-dark);
   color: white;
 }
 
@@ -568,9 +572,9 @@ textarea { resize: vertical; }
 }
 
 .adj-input-wrap.edited input {
-  border-color: var(--red);
-  background: var(--red-light);
-  color: var(--red-dark);
+  border-color: var(--blue-dark);
+  background: var(--blue);
+  color: #1a3a5c;
   font-weight: 600;
 }
 
@@ -597,8 +601,8 @@ textarea { resize: vertical; }
 .edited-badge {
   font-size: 10px;
   font-weight: 600;
-  background: var(--red-light);
-  color: var(--red);
+  background: var(--blue);
+  color: #1a3a5c;
   padding: 2px 7px;
   border-radius: 20px;
   margin-left: 6px;
