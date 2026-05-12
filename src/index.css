@@ -48,18 +48,13 @@ header {
 }
 
 .logo-mark {
-  width: 42px;
-  height: 42px;
-  background: var(--red);
-  color: white;
+  width: 48px;
+  height: 48px;
   border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-size: 13px;
-  letter-spacing: 1px;
+  overflow: hidden;
   flex-shrink: 0;
+  display: block;
+  object-fit: cover;
 }
 
 .header-text { flex: 1; }
